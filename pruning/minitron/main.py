@@ -30,8 +30,10 @@ def main(args):
         exp_name = f"{model_name}_{args.mode}_task_{args.prune_task}_nlayers_{args.num_layers}"
     else:
         exp_name = f"{model_name}_{args.mode}_task_{args.prune_task}_hidden_size_{args.hidden_size}_ffn_hidden_size_{args.ffn_hidden_size}"
-    
-    if args.prune_task in ['c4', 'wikitext', 'wikitext2', 'cnn_dailymail']:
+
+    exp_name = f"{exp_name}_calib_size_{args.calib_size}_seqlen_{args.seq_len}_fewshot_{args.num_fewshot}"
+
+    if args.prune_task in ['c4', 'wikitext', 'wikitext2', 'cnn_dailymail', 'pg19']:
         prune_scorer = partial(
             get_ppl, 
             task=args.prune_task, 
@@ -44,13 +46,14 @@ def main(args):
             get_acc, 
             task=args.prune_task, 
             num_fewshot=args.num_fewshot,
-            acc_key='acc,none'
+            acc_key='acc,none',
+            limit=args.calib_size,
         )
     else:
         raise NotImplementedError(f"Unsupported prune task: {args.prune_task}")
-        
-    print("Before pruning:")
+    
     base_line = prune_scorer(model, tokenizer)
+    print("Before pruning:")
     print(f"task: {args.prune_task}, score: {base_line}")
     
     if args.mode.lower() == 'bi':
@@ -90,8 +93,8 @@ def main(args):
         assert args.hidden_size is not None or args.ffn_hidden_size is not None, "hidden_size or ffn_hidden_size must be specified for width pruning"
         width_prune(model, tokenizer, prune_scorer, args)
     
+    score = prune_scorer(model, tokenizer)
     print("After pruning:")
-    score = prune_scorer(model, tokenizer, args)
     print(f"task: {args.prune_task}, score: {score}")
     
     if args.save_dir is not None:
@@ -107,8 +110,8 @@ if __name__ == '__main__':
     )
     
     parser.add_argument("--model_path", type=str, default=None)
-    parser.add_argument("--prune_task", type=str, required=False)
-    parser.add_argument("--save_dir", type=str)
+    parser.add_argument("--prune_task", type=str, required=True)
+    parser.add_argument("--save_dir", type=str, default=None)
     parser.add_argument("--log_dir", type=str, default=None)
     
     # pruning config

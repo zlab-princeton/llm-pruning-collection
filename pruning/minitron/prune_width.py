@@ -7,10 +7,10 @@ def get_idx(importance, size, layer_idx=0):
     return idx[:size]
     
 def prune_linear_module(module, in_idx=None, out_idx=None):
-    if in_idx:
+    if in_idx is not None:
         module.weight.data = module.weight.data[:, in_idx]
         module.in_features = in_idx.size(0)
-    if out_idx:
+    if out_idx is not None:
         module.weight.data = module.weight.data[out_idx, :]
         module.out_features = out_idx.size(0)
         if module.bias is not None:

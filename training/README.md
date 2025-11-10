@@ -1,5 +1,9 @@
 # Training
 
+## Roadmap
+- [ ] Organize FMS-FSDP docs and scripts. Verify gradient accumulation
+- [ ] Organize MaxText
+
 ## FMS-FSDP
 Install:
 ```bash

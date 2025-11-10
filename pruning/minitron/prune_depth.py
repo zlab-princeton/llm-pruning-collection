@@ -48,6 +48,8 @@ def depth_prune_BI(model, tokenizer, scorer, args):
     for layer in layers_to_drop:
         del layer
         
+    BI_scores = [s.item() for s in BI_scores]
+        
     return BI_scores, layer_idx_to_drop
         
 def depth_prune_score(model, tokenizer, scorer, base_line, args):
@@ -55,6 +57,7 @@ def depth_prune_score(model, tokenizer, scorer, base_line, args):
     all_layers = model.model.layers  # Direct access in FMS
 
     best_i = -1
+    best_score = None
     min_abs_diff = float('inf')
     all_scores = []
 
@@ -62,20 +65,21 @@ def depth_prune_score(model, tokenizer, scorer, base_line, args):
         if i > args.num_layers:
             break
         model.model.layers = all_layers[:i] + all_layers[i + num_layers_to_prune:]
-        score = scorer(model, tokenizer)[scorer.keywords['tasks'][0]]
+        score = scorer(model, tokenizer)
         print(f"i(0-indexed): {i} score: {score}")
         abs_diff = abs(score - base_line)
         if abs_diff < min_abs_diff:
-            best_i, min_abs_diff = i, abs_diff
+            best_i = i
+            best_score = score
+            min_abs_diff = abs_diff
         all_scores.append(score)
 
+    layer_idx_to_drop = list(range(best_i, best_i + num_layers_to_prune))
     print('best i(0-indexed):', best_i)
     print(f'best score:', best_score)
-    print('layers_to_drop(0-indexed)', list(range(best_i, best_i + num_layers_to_prune)))
+    print('layers_to_drop(0-indexed)', layer_idx_to_drop)
 
     model.model.layers = all_layers[:best_i] + all_layers[best_i + num_layers_to_prune:]
     model.config.num_hidden_layers = args.num_layers  # still keep for consistency
-    
-    layer_idx_to_drop = list(range(best_i, best_i + num_layers_to_prune))
 
     return all_scores, layer_idx_to_drop

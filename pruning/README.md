@@ -1,7 +1,7 @@
 # Pruning
 
 **Pruning Methods Overview**
-![](../figs/pruning-overview.png)
+![](figs/pruning-overview.png)
 
 **Road Map**
 - [x] Minitron

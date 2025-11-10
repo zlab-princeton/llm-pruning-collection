@@ -55,6 +55,14 @@ def get_ppl_enc(task, tokenizer):
         )
         text_column = "text"
         testenc = tokenizer.encode(" ".join(dataset[:8000][text_column]), return_tensors='pt')
+    elif task == 'pg19':
+        dataset = load_dataset(
+            "emozilla/pg19", 
+            split="validation", 
+            
+        )
+        text_column = "text"
+        testenc = tokenizer.encode(" ".join(dataset[:8000][text_column]), return_tensors='pt')
     else:
         raise NotImplementedError(f"Unsupported task: {task}")
     return testenc
@@ -98,7 +106,7 @@ def get_ppl(
             
         ppl = torch.exp(torch.tensor(tot_loss / tot_tokens)).item()
     
-    print(f"{task} ppl: {ppl}")
+    # print(f"{task} ppl: {ppl}")
     return ppl
         
 def get_acc(
@@ -107,7 +115,7 @@ def get_acc(
     task, 
     acc_key,
     num_fewshot=0,
-    num=None, 
+    limit=None,
 ):
     lm_eval_model = models.huggingface.HFLM(
         pretrained=model, 
@@ -126,6 +134,7 @@ def get_acc(
         max_batch_size=64,
         log_samples=True,
         confirm_run_unsafe_code=True,
+        limit=limit,
     )
     
     acc = res['results'][task][acc_key]

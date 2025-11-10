@@ -7,5 +7,7 @@ __pycache__
 *.out
 *.safetensors
 
-pruning/FLAP/llm_weights/
 checkpoints/
+**/**/llm_weights/
+**/**/logs/
+**/**/outputs/

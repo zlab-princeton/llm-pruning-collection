@@ -1,26 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from omegaconf import DictConfig, OmegaConf
 
-from eval import PPL_TASKS, TASK_CONFIG, ACC_TASKS
-
-def drop_layers(model, args):
-    layer_idx_to_drop = [int(each) for each in args.drop_layers]
-    assert all([idx in range(model.config.nlayers) for idx in layer_idx_to_drop]), 'invalid layer idx to drop!'
-    print('Layers to drop(0-indexed):', layer_idx_to_drop)
-    
-    layers_to_drop = [
-        layer for i, layer in enumerate(model.layers) if i in layer_idx_to_drop
-    ]
-    model.layers = nn.ModuleList(
-        [layer for i, layer in enumerate(model.layers) if i not in layer_idx_to_drop]
-    )
-    model.config.nlayers = len(model.layers)
-    torch.cuda.empty_cache()
-    
 def depth_prune_BI(model, tokenizer, scorer, args):
-    BI_scores = [0 for _ in model.layers]
+    BI_scores = [0 for _ in model.model.layers]
     hooks = []
     
     def get_BI_hook(layer_idx):
@@ -32,7 +15,7 @@ def depth_prune_BI(model, tokenizer, scorer, args):
                 BI_scores[layer_idx] += BI
         return calculate_BI_hook
     
-    for i, layer in enumerate(model.layers):
+    for i, layer in enumerate(model.model.layers):
         hooks.append(
             layer.register_forward_hook(get_BI_hook(i))
         )
@@ -52,48 +35,47 @@ def depth_prune_BI(model, tokenizer, scorer, args):
     # layer_idx_to_keep = [i for i in range(32) if i not in layer_idx_to_drop]
     
     layers_to_drop = [
-        layer for i, layer in enumerate(model.layers) if i in layer_idx_to_drop
+        layer for i, layer in enumerate(model.model.layers) if i in layer_idx_to_drop
     ]
     
     print('Layers to drop(0-indexed):', layer_idx_to_drop)
     
-    model.layers = nn.ModuleList(
-        [layer for i, layer in enumerate(model.layers) if i in layer_idx_to_keep]
+    model.model.layers = nn.ModuleList(
+        [layer for i, layer in enumerate(model.model.layers) if i in layer_idx_to_keep]
     )
-    model.config.nlayers = args.num_layers
+    model.config.num_hidden_layers = args.num_layers
     
     for layer in layers_to_drop:
         del layer
         
-def depth_prune_score(model, tokenizer, scorer, args):
-    
-    num_layers_to_prune = model.config.nlayers - args.num_layers
-    all_layers = model.layers  # Direct access in FMS
+    return BI_scores, layer_idx_to_drop
+        
+def depth_prune_score(model, tokenizer, scorer, base_line, args):
+    num_layers_to_prune = model.config.num_hidden_layers - args.num_layers
+    all_layers = model.model.layers  # Direct access in FMS
 
     best_i = -1
-    if scorer.keywords["tasks"][0] in PPL_TASKS:
-        best_score = float('inf')
-    elif scorer.keywords["tasks"][0] in TASK_CONFIG.keys():
-        best_score = float('-inf')
+    min_abs_diff = float('inf')
     all_scores = []
 
-    for i in range(model.config.nlayers):
+    for i in range(model.config.num_hidden_layers):
         if i > args.num_layers:
             break
-        model.layers = all_layers[:i] + all_layers[i + num_layers_to_prune:]
+        model.model.layers = all_layers[:i] + all_layers[i + num_layers_to_prune:]
         score = scorer(model, tokenizer)[scorer.keywords['tasks'][0]]
         print(f"i(0-indexed): {i} score: {score}")
-        if scorer.keywords["tasks"][0] in PPL_TASKS and score < best_score:
-            best_i, best_score = i, score
-        elif scorer.keywords["tasks"][0] in ACC_TASKS and score > best_score:
-            best_i, best_score = i, score
+        abs_diff = abs(score - base_line)
+        if abs_diff < min_abs_diff:
+            best_i, min_abs_diff = i, abs_diff
         all_scores.append(score)
 
     print('best i(0-indexed):', best_i)
     print(f'best score:', best_score)
     print('layers_to_drop(0-indexed)', list(range(best_i, best_i + num_layers_to_prune)))
 
-    model.layers = all_layers[:best_i] + all_layers[best_i + num_layers_to_prune:]
-    model.config.nlayers = args.num_layers  # still keep for consistency
+    model.model.layers = all_layers[:best_i] + all_layers[best_i + num_layers_to_prune:]
+    model.config.num_hidden_layers = args.num_layers  # still keep for consistency
+    
+    layer_idx_to_drop = list(range(best_i, best_i + num_layers_to_prune))
 
-    return all_scores
+    return all_scores, layer_idx_to_drop

@@ -6,23 +6,23 @@ def get_idx(importance, size, layer_idx=0):
     _, idx = torch.sort(importance[layer_idx, :], descending=True)
     return idx[:size]
     
-def prune_linear_module(module, idx, size, dim='in'):
-    if dim == 'in':
-        module.weight.data = module.weight.data[:, idx]
-        module.in_features = size
-    elif dim == 'out':
-        module.weight.data = module.weight.data[idx, :]
-        module.out_features = size
+def prune_linear_module(module, in_idx=None, out_idx=None):
+    if in_idx:
+        module.weight.data = module.weight.data[:, in_idx]
+        module.in_features = in_idx.size(0)
+    if out_idx:
+        module.weight.data = module.weight.data[out_idx, :]
+        module.out_features = out_idx.size(0)
         if module.bias is not None:
-            module.bias.data = module.bias.data[idx]
+            module.bias.data = module.bias.data[out_idx]
 
 def width_prune(model, tokenizer, scorer, args):
     
     device = next(model.parameters()).device
-    intermediate_size = int(model.config.hidden_grow_factor * model.config.emb_dim)
-    hidden_size_importance = torch.zeros(1, model.config.emb_dim, device=device)
-    ffn_importance = torch.zeros(model.config.nlayers, intermediate_size, device=device)
-    attn_importance = torch.zeros(model.config.nlayers, model.config.emb_dim, device=device)
+    intermediate_size = model.config.intermediate_size
+    hidden_size_importance = torch.zeros(1, model.config.hidden_size, device=device)
+    ffn_importance = torch.zeros(model.config.num_hidden_layers, intermediate_size, device=device)
+    attn_importance = torch.zeros(model.config.num_hidden_layers, model.config.hidden_size, device=device)
     
     def get_ffn_hook(layer_idx):
         def ffn_hook(module, inputs, outputs):
@@ -38,10 +38,10 @@ def width_prune(model, tokenizer, scorer, args):
         hidden_size_importance[0, :] += activations
     
     hooks = []
-    for i, layer in enumerate(model.layers):
-        hooks.append(layer.ln.register_forward_hook(LN_hook))
-        hooks.append(layer.ff_ln.register_forward_hook(LN_hook))
-        hooks.append(layer.ff_sub_layer.w2.register_forward_hook(get_ffn_hook(i)))
+    for i, layer in enumerate(model.model.layers):
+        hooks.append(layer.input_layernorm.register_forward_hook(LN_hook))
+        hooks.append(layer.post_attention_layernorm.register_forward_hook(LN_hook))
+        hooks.append(layer.mlp.down_proj.register_forward_hook(get_ffn_hook(i)))
     
     _ = scorer(model, tokenizer)
     
@@ -50,34 +50,34 @@ def width_prune(model, tokenizer, scorer, args):
     # pdb.set_trace()
         
     hidden_idx = get_idx(importance=hidden_size_importance, size=args.hidden_size)
-    for i, layer in enumerate(model.layers):
+    for i, layer in enumerate(model.model.layers):
         # NOTE sort by importance
         ffn_idx = get_idx(importance=ffn_importance, size=args.ffn_hidden_size, layer_idx=i).view(-1)
         
         # NOTE ATTN pruning
-        layer.ln.weight.data = layer.ln.weight.data[hidden_idx]
-        prune_linear_module(module=layer.attn.in_proj.qkv_fused, idx=hidden_idx, size=args.hidden_size, dim='in')
-        prune_linear_module(module=layer.attn.dense, idx=hidden_idx, size=args.hidden_size, dim='out')
+        layer.input_layernorm.weight.data = layer.input_layernorm.weight.data[hidden_idx]
+        prune_linear_module(module=layer.self_attn.q_proj, in_idx=hidden_idx)
+        prune_linear_module(module=layer.self_attn.k_proj, in_idx=hidden_idx)
+        prune_linear_module(module=layer.self_attn.v_proj, in_idx=hidden_idx)
+        prune_linear_module(module=layer.self_attn.o_proj, out_idx=hidden_idx)
         
         # NOTE MLP pruning
-        layer.ff_ln.weight.data = layer.ff_ln.weight.data[hidden_idx]
-        prune_linear_module(module=layer.ff_sub_layer.wg1_fused, idx=hidden_idx, size=args.hidden_size, dim='in')
-        combined_idx = torch.cat([ffn_idx, ffn_idx + intermediate_size])
-        prune_linear_module(module=layer.ff_sub_layer.wg1_fused, idx=combined_idx, size=2 * args.ffn_hidden_size, dim='out')
-        layer.ff_sub_layer.hidden_dim = args.ffn_hidden_size
+        layer.post_attention_layernorm.weight.data = layer.post_attention_layernorm.weight.data[hidden_idx]
+        prune_linear_module(module=layer.mlp.up_proj, in_idx=hidden_idx, out_idx=ffn_idx)
+        prune_linear_module(module=layer.mlp.gate_proj, in_idx=hidden_idx, out_idx=ffn_idx)
+        layer.mlp.intermediate_size = args.ffn_hidden_size
         
-        prune_linear_module(module=layer.ff_sub_layer.w2, idx=ffn_idx, size=args.ffn_hidden_size, dim='in')
-        prune_linear_module(module=layer.ff_sub_layer.w2, idx=hidden_idx, size=args.hidden_size, dim='out')
+        prune_linear_module(module=layer.mlp.down_proj, in_idx=ffn_idx, out_idx=hidden_idx)
     
     # NOTE prune embedding   
-    model.shared.emb.weight.data = model.shared.emb.weight.data[:, hidden_idx]
-    model.shared.emb.embedding_dim = args.hidden_size
+    model.model.embed_tokens.weight.data = model.model.embed_tokens.weight.data[:, hidden_idx]
+    model.model.embed_tokens.embedding_dim = args.hidden_size
     # NOTE prune model norm and lm_head
-    model.dec_norm.weight.data = model.dec_norm.weight.data[hidden_idx]
-    prune_linear_module(module=model.shared.head, idx=hidden_idx, size=args.hidden_size, dim='in')
+    model.model.norm.weight.data = model.model.norm.weight.data[hidden_idx]
+    prune_linear_module(module=model.lm_head, in_idx=hidden_idx)
         
     for hook in hooks:
         hook.remove()
         
-    model.config.emb_dim = args.hidden_size
-    model.config.hidden_grow_factor = args.ffn_hidden_size / args.hidden_size
+    model.config.hidden_size = args.hidden_size
+    model.config.intermediate_size = args.ffn_hidden_size

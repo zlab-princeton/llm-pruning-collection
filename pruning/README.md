@@ -3,6 +3,19 @@
 **Pruning Methods Overview**
 ![](../figs/pruning-overview.png)
 
+**Road Map**
+- [x] Minitron
+- [ ] ShortGPT
+- [ ] Wanda
+- [ ] SparseGPT
+- [ ] Magnitude
+- [ ] Sheared Llama
+- [ ] LLM Pruner
+- [ ] Shortened Llama
+- [ ] Wanda-sp
+- [ ] FLAP
+- [ ] SLEB
+
 ## Minitron
 Installation:
 ```bash

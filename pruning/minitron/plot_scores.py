@@ -27,12 +27,7 @@ if __name__ == '__main__':
     #     "scores": [0.7, 0.4, 0.3, 0.8],
     #     "baseline": 1
     # }
-    save_dir = args.log_path
-    os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(
-        save_dir, 
-        os.path.basename(args.log_path).replace('.json', '.png')
-    )
+    save_path = args.log_path.replace('.json', '.png')
 
     plot_scores(data, save_path)
     print(f"Plot saved to {save_path}")

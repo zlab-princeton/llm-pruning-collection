@@ -15,18 +15,20 @@
 #SBATCH --mail-type=all
 #SBATCH --mail-user=yx1168@princeton.edu
 
+#SBATCH --chdir=.
+
 set -euo pipefail
 
 source /usr/local/anaconda3/2024.02/etc/profile.d/conda.sh
 conda activate minitron
 
-PROJ_DIR="$(dirname $(realpath "${BASH_SOURCE[0]}"))/.."
+PROJ_DIR=minitron
 
-model_path=meta-llama/Llama-2-7b-hf
-# model_path=/n/fs/vision-mix/yx1168/model_ckpts/Llama-2-7b-hf
+# model_path=meta-llama/Llama-2-7b-hf
+model_path=/n/fs/vision-mix/yx1168/model_ckpts/Llama-2-7b-hf
 save_dir=${PROJ_DIR}/../../checkpoints/minitron
 log_dir=${PROJ_DIR}/logs
-calib_size=32
+calib_size=1024
 
 python $PROJ_DIR/main.py bi \
     --model_path ${model_path} \

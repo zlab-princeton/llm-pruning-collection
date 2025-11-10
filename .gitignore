@@ -9,5 +9,6 @@ __pycache__
 
 checkpoints/
 **/**/llm_weights/
+**/logs/
 **/**/logs/
 **/**/outputs/

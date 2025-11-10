@@ -9,24 +9,26 @@
 
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128GB
-#SBATCH --time=4:00:00
+#SBATCH --time=8:00:00
 #SBATCH --gres=gpu:1
 
 #SBATCH --mail-type=all
 #SBATCH --mail-user=yx1168@princeton.edu
+
+#SBATCH --chdir=.
 
 set -euo pipefail
 
 source /usr/local/anaconda3/2024.02/etc/profile.d/conda.sh
 conda activate minitron
 
-PROJ_DIR="$(dirname $(realpath "${BASH_SOURCE[0]}"))/.."
+PROJ_DIR="minitron"
 
-model_path=meta-llama/Llama-3.1-8B
-# model_path=/n/fs/vision-mix/yx1168/model_ckpts/Llama-3.1-8B
+# model_path=meta-llama/Llama-3.1-8B
+model_path=/n/fs/vision-mix/yx1168/model_ckpts/Llama-3.1-8B
 save_dir=${PROJ_DIR}/../../checkpoints
 log_dir=${PROJ_DIR}/outputs
-calib_size=32
+calib_size=1024
 
 python $PROJ_DIR/main.py bi \
     --model_path ${model_path} \

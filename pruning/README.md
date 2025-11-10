@@ -4,17 +4,17 @@
 ![](figs/pruning-overview.png)
 
 **Road Map**
-- [x] Minitron
-- [ ] ShortGPT
-- [ ] Wanda
-- [ ] SparseGPT
-- [ ] Magnitude
-- [ ] Sheared Llama
-- [ ] LLM Pruner
-- [ ] Shortened Llama
-- [ ] Wanda-sp
-- [ ] FLAP
-- [ ] SLEB
+- [x] [Minitron](minitron/README.md#minitron-depth)
+- [x] [ShortGPT](minitron/README.md#shortgpt)
+- [ ] [Wanda](wanda/README.md)
+- [ ] [SparseGPT](wanda/README.md)
+- [ ] [Magnitude](wanda/README.md)
+- [ ] [Sheared Llama](llmshearing/README.md)
+- [ ] [LLM Pruner](LLM-Pruner/README.md)
+- [ ] [Shortened Llama](shortened-llm/README.md)
+- [ ] [Wanda-sp](FLAP/README.md)
+- [ ] [FLAP](FLAP/README.md)
+- [ ] [SLEB]
 
 ## Minitron
 Installation:

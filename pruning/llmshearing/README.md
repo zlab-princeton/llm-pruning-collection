@@ -18,7 +18,9 @@ Please download the data from [here](https://huggingface.co/datasets/Zephyr27182
 .
 ├── count_tokens.py
 ├── get_all_jsonl.py
+├── llama_tokenizer.py
 ├── merge_data.py
+├── README.md
 ├── redpajama
 │   └── for_prune
 │       ├── arxiv
@@ -30,10 +32,13 @@ Please download the data from [here](https://huggingface.co/datasets/Zephyr27182
 │       ├── github
 │       ├── stackexchange
 │       └── wiki
+├── sample_all_domains.sh
 ├── sample.py
 ├── sample_redpajama
-│   ├── ...
+│   └── ...
 ├── split_jsonl.py
+├── tokenize_all_files.sh
+├── tokenizer.model
 └── tokenize_single_file.py
 ```
 For a detailed and customized data preparation guide, please see [here](llmshearing/data/README.md).
@@ -52,12 +57,10 @@ bash scripts/composer2hf.sh
 
 ## Results
 
-Llama-2-2.7B
-| Source | |
-|:--:|:--:|
-| | |
-
-Llama-2-1.3B
-| Source | |
-|:--:|:--:|
-| | |
+To reproduce the results after pruning and before continual training, we downloadd the officially released [1.3B](https://huggingface.co/princeton-nlp/Sheared-LLaMA-1.3B-Pruned) and [2.7B](https://huggingface.co/princeton-nlp/Sheared-LLaMA-2.7B-Pruned) checkpoints from HF and evaluated the checkpoints with lm-eval-harness.
+| Size | Source   | BoolQ | PIQA | Winogrande | ARC-C | ARC-E | Hellaswag | 
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| 2.7B | Released | 84.5 | 66.4 | 53.2 | 26.5 | 49.9 | 47.1 |
+| 2.7B | Tested   | 84.2 | 66.2 | 55.9 | 28.2 | 52.8 | 46.9 |
+| 1.3B | Released | 77.5 | 62.6 | 50.3 | 19.5 | 41.0 | 34.8 |
+| 1.3B | Tested   | 77.8 | 60.5 | 51.0 | 18.4 | 41.8 | 34.1 |

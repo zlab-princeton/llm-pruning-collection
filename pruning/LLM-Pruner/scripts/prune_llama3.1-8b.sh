@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-#SBATCH --job-name=prune_llama-7b_%j
-#SBATCH --output=logs/prune_llama-7b_%j.out
-#SBATCH --error=logs/prune_llama-7b_%j.err
+#SBATCH --job-name=prune_llama3.1-8b_%j
+#SBATCH --output=logs/prune_llama3.1-8b_%j.out
+#SBATCH --error=logs/prune_llama3.1-8b_%j.err
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -22,7 +22,8 @@ source $(conda info --base)/etc/profile.d/conda.sh
 conda activate llm-pruner
 
 PROJ_DIR=$(pwd)
-base_model=/n/fs/vision-mix/yx1168/model_ckpts/llama-7b
+# base_model=meta-llama/Llama-3.1-8B
+base_model=/n/fs/vision-mix/yx1168/model_ckpts/Llama-3.1-8B
 model_name=$(basename ${base_model})
 log_dir=${PROJ_DIR}/../../checkpoints/llm-pruner
 
@@ -34,7 +35,7 @@ run_exp() {
     ratio=${4:-0.25}
     exp_name=${model_name}_${dim}_${type}_${taylor}_${ratio}
     echo "Running experiment ${exp_name}..."
-    CUDA_VISIBLE_DEVICES=0,1 python hf_prune.py \
+    CUDA_VISIBLE_DEVICES=0,1 python llama3.py \
         --base_model ${base_model} \
         --pruning_ratio ${ratio} \
         --device cuda  \

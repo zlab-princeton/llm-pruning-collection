@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-#SBATCH --job-name=prune_llama-7b_%j
-#SBATCH --output=logs/prune_llama-7b_%j.out
-#SBATCH --error=logs/prune_llama-7b_%j.err
+#SBATCH --job-name=prune_llama2-7b_%j
+#SBATCH --output=logs/prune_llama2-7b_%j.out
+#SBATCH --error=logs/prune_llama2-7b_%j.err
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -22,7 +22,8 @@ source $(conda info --base)/etc/profile.d/conda.sh
 conda activate llm-pruner
 
 PROJ_DIR=$(pwd)
-base_model=/n/fs/vision-mix/yx1168/model_ckpts/llama-7b
+# base_model=meta-llama/Llama-2-7b-hf
+base_model=/n/fs/vision-mix/yx1168/model_ckpts/Llama-2-7b-hf
 model_name=$(basename ${base_model})
 log_dir=${PROJ_DIR}/../../checkpoints/llm-pruner
 

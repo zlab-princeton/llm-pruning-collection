@@ -26,7 +26,7 @@ conda activate llmshearing
 # Please specify the working folder
 PROJ_DIR=$(pwd)
 DATA_DIR=${PROJ_DIR}/llmshearing/data/redpajama/for_prune
-OUTPUT_DIR=${PROJ_DIR}/outputs
+OUTPUT_DIR=${PROJ_DIR}/../../checkpoints/llmshearing
 TRAIN_SCRIPT=${PROJ_DIR}/llmshearing/train.py
 MODEL_PATH=${PROJ_DIR}/../../checkpoints/llmshearing/Llama-2-7b-composer
 
@@ -88,7 +88,7 @@ fi
 
 # save directroy
 TIME=$(date +%Y%m%d_%H%M%S)
-run_name=llama2_${from_model}_pruning_scaling_${update_type}_to${to_model}_sl${max_seq_len}_bs${device_train_microbatch_size}_${max_duration}_${TIME}
+run_name=llama2_${from_model}_pruning_scaling_${update_type}_to${to_model}_sl${max_seq_len}_bs${device_train_microbatch_size}_${max_duration}
 save_dir=${OUTPUT_DIR}/${run_name}
 wandb_dir=${save_dir} # save locally
 

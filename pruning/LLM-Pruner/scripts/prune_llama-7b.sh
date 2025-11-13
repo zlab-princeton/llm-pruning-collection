@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128GB
 #SBATCH --time=12:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 
 #SBATCH --mail-type=all
 #SBATCH --mail-user=yx1168@princeton.edu
@@ -23,6 +23,8 @@ conda activate llm-pruner
 
 PROJ_DIR=$(pwd)
 base_model=/n/fs/vision-mix/yx1168/model_ckpts/llama-7b
+model_name=$(basename ${base_model})
+log_dir=${PROJ_DIR}/../../checkpoints/llm-pruner
 
 export PYTHONPATH=$(pwd):${PYTHONPATH:-''}
 run_exp() {
@@ -30,7 +32,7 @@ run_exp() {
     type=${2:-taylor}
     taylor=${3:-param_first}
     ratio=${4:-0.25}
-    exp_name=
+    exp_name=${model_name}_${dim}_${type}_${taylor}_${ratio}
     CUDA_VISIBLE_DEVICES=0,1 python hf_prune.py \
         --base_model ${base_model} \
         --pruning_ratio ${ratio} \
@@ -41,7 +43,7 @@ run_exp() {
         --block_mlp_layer_end 30 \
         --block_attention_layer_start 4 \
         --block_attention_layer_end 30 \
-        --log_dir ${PROJ_DIR}/../../checkpoints \
+        --log_dir ${log_dir} \
         --save_ckpt_log_name "${exp_name}" \
         --pruner_type ${type} \
         --taylor ${taylor} \

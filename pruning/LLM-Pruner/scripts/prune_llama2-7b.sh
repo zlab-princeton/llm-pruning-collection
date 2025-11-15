@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 #SBATCH --job-name=prune_llama2-7b_%j
 #SBATCH --output=logs/prune_llama2-7b_%j.out
 #SBATCH --error=logs/prune_llama2-7b_%j.err

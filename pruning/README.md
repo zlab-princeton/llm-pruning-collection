@@ -2,7 +2,7 @@
 
 **Pruning Methods Overview**
 Pruning Granularity:
-![](figs/pruning-overview-verbose.png)
+![](figs/pruning-overview-with-captions.png)
 
 Pruning Methods:
 ![](figs/pruning-overview.png)

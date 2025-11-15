@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --job-name=llama3.1_4b_%j
-#SBATCH --output=logs/llama3.1_4b_%j.out
-#SBATCH --error=logs/llama3.1_4b_%j.err
+#SBATCH --job-name=finetuning_%j
+#SBATCH --output=logs/finetuning_%j.out
+#SBATCH --error=logs/finetuning_%j.err
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -15,14 +15,18 @@
 #SBATCH --mail-type=all
 #SBATCH --mail-user=yx1168@princeton.edu
 
-source /usr/local/anaconda3/2024.02/etc/profile.d/conda.sh
-conda activate fms
+set -euo pipefail
 
-SHUFFLE=False
+PROJ_DIR=$(pwd)
+
+source $(conda info --base)/etc/profile.d/conda.sh
+conda activate fms_fsdp
+export PYTHONPATH=$PROJ_DIR/..:${PYTHONPATH:-''}
 
 export OMP_NUM_THREADS=10
 
-export CKPT_DIR='/n/fs/vision-mix/yx1168/pruning/ckpts/minitron'
+export CKPT_DIR=$PROJ_DIR/../../checkpoints/fms
+mkdir -p ${CKPT_DIR}
 
 NUM_STEPS=12500
 LEARNING_RATE=0.0003
@@ -33,22 +37,19 @@ REPORT_INTERVAL=1
 CHECKPOINT_INTERVAL=1
 WARMUP_RATIO=0.05
 
-MODEL_VARIANT='llama3_4b_width'
+MODEL_VARIANT='llama3_8b'
+LOAD_PATH="${CKPT_DIR}/${MODEL_VARIANT}_fms.pth"
 
 if [[ "$MODEL_VARIANT" == *"llama3"* ]]; then
     SEQ_LENGTH=8192
     BOS_TOKEN=128000
     EOS_TOKEN=128001
-    if [[ "$SHUFFLE" == "True" ]]; then
-        DATA_DIR='/n/fs/vision-mix/yx1168/datasets/dclm/llama3_64_shuffled/'
-    else
-        DATA_DIR='/n/fs/vision-mix/yx1168/datasets/dclm/llama3_rank128/'
-    fi
+    DATA_DIR=$PROJ_DIR/../../datasets/dclm/llama3_64_shuffled
 elif [[ "$MODEL_VARIANT" == *"llama2"* ]]; then
     SEQ_LENGTH=4096
     BOS_TOKEN=1
     EOS_TOKEN=2
-    DATA_DIR='/n/fs/vision-mix/yx1168/datasets/dclm/llama2_1b_rank4'
+    DATA_DIR=$PROJ_DIR/../../datasets/dclm/llama2_64_shuffled
 fi
 
 get_free_port() {
@@ -59,7 +60,6 @@ num_nodes=${SLURM_JOB_NUM_NODES}
 num_gpus=$(nvidia-smi -L | wc -l)
 
 if [[ $num_nodes -gt 1 ]]; then
-    echo "Running on multiple nodes is not supported yet."
     node_rank=${SLURM_NODEID}    
     master_addr=$(scontrol show hostname $SLURM_JOB_NODELIST | head -n 1)
     head_node_ip=( $(srun --nodes=1 --ntasks=1 -w "$master_addr" hostname --ip-address) )
@@ -76,16 +76,9 @@ GRAD_ACCUM_STEPS=$(( GLOBAL_BATCH_SIZE / (BATCH_SIZE * num_nodes * num_gpus) ))
 run_exp() {
 
     EXPERIMENT_NAME=${MODEL_VARIANT}_seq_${SEQ_LENGTH}_bs_${BATCH_SIZE}_global_bs_${GLOBAL_BATCH_SIZE}_steps_${NUM_STEPS}_lr_${LEARNING_RATE}_minlr_ratio_${MIN_LEARNING_RATE_RATIO}_warmup_${WARMUP_RATIO}
-    if [[ "$SHUFFLE" == "True" ]]; then
-        EXPERIMENT_NAME=${EXPERIMENT_NAME}_shuffle
-    fi
 
     SAVE_DIR="${CKPT_DIR}/${EXPERIMENT_NAME}"
     mkdir -p ${SAVE_DIR}
-
-    LOAD_PATH="/n/fs/vision-mix/yx1168/pruning/maxtext2hf/pruned/Llama-3.1-8B_minitron_width_hiddensize_3072_mlpsize_9216_fp16/fms_model.pth"
-
-    export WANDB_API_KEY='7d11bbca76b3081b6bd1efbbcf1572aab26c5d56'
 
     SCRIPT_ARGS="\
     training/finetuning.py \
@@ -131,18 +124,13 @@ run_exp() {
             --rdzv_endpoint=${head_node_ip}:54224 \
             ${SCRIPT_ARGS}
     else
-        echo "PORT: $port"
+        # echo "PORT: $port"
         MASTER_PORT=${port} \
             torchrun \
             --master_port ${port} \
             --nproc_per_node ${num_gpus} \
             ${SCRIPT_ARGS}
     fi
-
-    # python minitron/eval.py \
-    #     --fms_path ${SAVE_DIR}/checkpoints/step_${NUM_STEPS}_ckp.pth \
-    #     --tokenizer_path '/n/fs/vision-mix/yx1168/model_ckpts/Llama-3.1-8B' \
-    #     --model_variant ${MODEL_VARIANT}
 
 }
 

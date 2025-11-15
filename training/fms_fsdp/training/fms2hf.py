@@ -71,7 +71,6 @@ def convert_to_hf(model: LLaMA, model_variant, is_old_fms) -> LlamaForCausalLM:
                     fms_hf_layer.attn.in_proj.splits,
                     dim=0,
                 )
-                import pdb; pdb.set_trace()
                 oss_hf_layer.self_attn.q_proj.weight.copy_(q)
                 oss_hf_layer.self_attn.k_proj.weight.copy_(k)
                 oss_hf_layer.self_attn.v_proj.weight.copy_(v)
@@ -132,29 +131,8 @@ def convert_to_hf(model: LLaMA, model_variant, is_old_fms) -> LlamaForCausalLM:
 
 
 def main(
-    model_variant, compiled, load_path, save_path, tokenizer_name_or_path
+    model_variant, load_path, save_path, tokenizer_name_or_path
 ):
-    # print("Initializing model...")
-    # llama_config = get_model_config(model_variant)
-    # with torch.device("meta"):
-    #     model = LLaMA(llama_config)
-    # model.to_empty(device="cpu")
-
-    # print(f"Reading state dict from {load_path}")
-    # if not compiled:
-    #     state_dict = {"model_state": model.state_dict()}
-    # else:
-    #     state_dict = {"model_state": {"_orig_mod": model.state_dict()}}
-    # load_state_dict(
-    #     state_dict=state_dict, storage_reader=FileSystemReader(load_path), no_dist=True
-    # )
-
-    # print("Loading state dict into the model...")
-    # if not compiled:
-    #     model.load_state_dict(state_dict["model_state"])
-    # else:
-    #     model.load_state_dict(state_dict["model_state"]["_orig_mod"])
-    
     llama_config = get_model_config(model_variant)
     model = LLaMA(llama_config)
     state_dict = torch.load(load_path, weights_only=False)
@@ -178,7 +156,6 @@ def main(
     tokenizer.save_pretrained(save_path)
 
     print(f"Model converted to HF model, saving at {save_path}")
-
 
 if __name__ == "__main__":
     fire.Fire(main)

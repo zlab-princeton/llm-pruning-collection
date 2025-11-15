@@ -10,12 +10,10 @@ export PYTHONPATH=$PROJ_DIR/..:${PYTHONPATH:-''}
 
 ckpt_dir=$PROJ_DIR/../../checkpoints
 model_variant='llama3_8b'
-# hf_path="meta-llama/Llama-3.1-8B"
-hf_path="/n/fs/vision-mix/yx1168/model_ckpts/Llama-3.1-8B"
-save_dir="${ckpt_dir}/fms"
-mkdir -p ${save_dir}
+fms_Path="${ckpt_dir}/fms/${model_variant}_fms.pth"
+hf_path="${ckpt_dir}/hf/${model_variant}_hf"
 
-python training/hf2fms.py \
+python training/eq_test.py \
     --model_variant ${model_variant} \
     --hf_path ${hf_path} \
-    --save_path ${save_dir}/${model_variant}_fms.pth
+    --fms_path ${fms_Path} 

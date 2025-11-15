@@ -53,4 +53,4 @@ for bin_dir in "${bin_dirs[@]}"; do
 #         --output_path ${log_dir}/${model_name}.json \
 #         --no_cache
 
-# done
+done

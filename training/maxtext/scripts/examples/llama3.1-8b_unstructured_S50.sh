@@ -1,16 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-source scripts/get_tpu_info.sh
+source scripts/get_tpu_bucket_name.sh
 
 export TPU_PREFIX="$(get_tpu_name)"
 export BUCKET_NAME="$(get_bucket_name)"
+export NUM_HOSTS=$(get_num_hosts)
 
 for arg in "$@"; do
     case $arg in
         --lr=*) LR="${arg#*=}" ;;
-        --batch_size=*) BATCH_SIZE="${arg#*=}" ;;
-        --grad_accum=*) GRAD_ACCUM="${arg#*=}" ;;
+        --global_batch_size=*) GLOBAL_BATCH_SIZE="${arg#*=}" ;;
+        --micro_batch_size=*) MICRO_BATCH_SIZE="${arg#*=}" ;;
         --grad_clip=*) GRAD_CLIP="${arg#*=}" ;;
         --min_lr_ratio=*) MIN_LR_RATIO="${arg#*=}" ;;
         --warmup_ratio=*) WARMUP_RATIO="${arg#*=}" ;;
@@ -25,8 +26,9 @@ done
 export MODEL_NAME="llama3.1-8b"
 export NUM_STEPS=12500
 export SEQ_LEN=8192
-export BATCH_SIZE=${BATCH_SIZE:-2}
-export GRAD_ACCUM=${GRAD_ACCUM:-4}
+export GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE:-512}
+export MICRO_BATCH_SIZE=${MICRO_BATCH_SIZE:-2}
+export GRAD_ACCUM=$((GLOBAL_BATCH_SIZE / MICRO_BATCH_SIZE / NUM_HOSTS / 4))
 export GRAD_CLIP=${GRAD_CLIP:-1.0}
 export LR=${LR:-0.0003}
 export MIN_LR_RATIO=${MIN_LR_RATIO:-0.1}
@@ -43,11 +45,12 @@ fi
 export JAX_PLATFORMS=tpu
 export SPARSE_MODEL_TRAINING=True
 
-python -u multihost_runner.py \
+python -u multihost_runner_orig.py \
     --TPU_PREFIX=${TPU_PREFIX} \
     --COMMAND="
-    source $(conda info --base)/etc/profile.d/conda.sh
-    conda activate maxtext
+    export TPU_LOG_DIR=/home/zephyr/tpu_logs
+    export WANDB_API_KEY='7d11bbca76b3081b6bd1efbbcf1572aab26c5d56'
+    source ~/maxtext_env/bin/activate
     python3.10 -u -m MaxText.train MaxText/configs/base.yml \
         run_name=${RUN_NAME} \
         load_parameters_path=gs://${BUCKET_NAME}/model_ckpts/maxtext/llama3.1_8b_L200_unstructured_0.5_reinit/checkpoints/0/items \
@@ -64,7 +67,7 @@ python -u multihost_runner.py \
         async_checkpointing=${ASYNC_CHECKPOINTING} \
         model_name=${MODEL_NAME} \
         steps=${NUM_STEPS} \
-        per_device_batch_size=${BATCH_SIZE} \
+        per_device_batch_size=${MICRO_BATCH_SIZE} \
         gradient_accumulation_steps=${GRAD_ACCUM} \
         gradient_clipping_threshold=${GRAD_CLIP} \
         learning_rate=${LR} \

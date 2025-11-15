@@ -3,11 +3,6 @@
 set +x
 set -euo pipefail
 
-source scripts/get_tpu_bucket_name.sh
-
-export BUCKET_NAME="$(get_bucket_name)"
-export TPU_PREFIX="$(get_tpu_name)"
-
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <mode> [--model=MODEL] [--orbax_ckpt_path=ORBAX_CKPT_NAME] [--step=STEP] [--hf_model_path=HF_MODEL_NAME] [--direct_run_name=DIRECT_RUN_NAME]"
   echo "Modes: hf_to_orbax | gen_param_ckpt | orbax_to_hf | logits_test | eval"
@@ -37,12 +32,17 @@ if [[ $MODE == "help" ]]; then
   exit 0
 fi
 
+source scripts/get_tpu_info.sh
+
+export BUCKET_NAME="$(get_bucket_name)"
+export TPU_PREFIX="$(get_tpu_name)"
+
 ### ====== CONFIG ======
 # place to save the maxtext ckpts
-export ORBAX_CKPT_DIR="gs://${BUCKET_NAME}/model_ckpts/maxtext"
+export ORBAX_CKPT_DIR="gs://${BUCKET_NAME}/model_ckpts/maxtext" # directory of orbax checkpoints
 export STEP="${STEP:-0}"
-export DIRECT_CKPT_DIR="gs://${BUCKET_NAME}/model_ckpts/direct"
-export HF_CKPT_DIR="/home/zephyr/gcs-bucket/model_ckpts/hf"
+export DIRECT_CKPT_DIR="gs://${BUCKET_NAME}/model_ckpts/direct" # directory of param-only orbax checkpoints
+export HF_CKPT_DIR="/home/zephyr/gcs-bucket/model_ckpts/hf" # directory of Hugging Face checkpoints
 export PYTHONPATH="$(pwd)":${PYTHONPATH:-''}
 
 case "$MODE" in

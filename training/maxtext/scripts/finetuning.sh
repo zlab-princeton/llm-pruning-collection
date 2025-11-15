@@ -1,32 +1,36 @@
 #!/bin/bash
 set -euo pipefail
 
-source scripts/get_tpu_info.sh
+source scripts/get_tpu_bucket_name.sh
 
 export TPU_PREFIX="$(get_tpu_name)"
 export BUCKET_NAME="$(get_bucket_name)"
+export NUM_HOSTS=$(get_num_hosts)
 
 for arg in "$@"; do
     case $arg in
+        --num_steps=*) NUM_STEPS="${arg#*=}" ;;
         --lr=*) LR="${arg#*=}" ;;
-        --batch_size=*) BATCH_SIZE="${arg#*=}" ;;
-        --grad_accum=*) GRAD_ACCUM="${arg#*=}" ;;
+        --global_batch_size=*) GLOBAL_BATCH_SIZE="${arg#*=}" ;;
+        --micro_batch_size=*) MICRO_BATCH_SIZE="${arg#*=}" ;;
         --grad_clip=*) GRAD_CLIP="${arg#*=}" ;;
         --min_lr_ratio=*) MIN_LR_RATIO="${arg#*=}" ;;
         --warmup_ratio=*) WARMUP_RATIO="${arg#*=}" ;;
         --max_to_keep=*) MAX_TO_KEEP="${arg#*=}" ;;
         --data_files=*) DATA_FILES="${arg#*=}" ;;
+        --load_parameters_path=*) LOAD_PARAMETERS_PATH="${arg#*=}" ;;
         --shuffle=*) SHUFFLE="${arg#*=}" ;;
         --tag=*) TAG="${arg#*=}" ;;
         *) echo "[WARN] Unknown arg $arg" ;;
     esac
 done
 
-export MODEL_NAME="llama3.1-2b-depth"
-export NUM_STEPS=12500
+export MODEL_NAME=${MODEL_NAME:-"llama3.1-8b"}
+export NUM_STEPS=${NUM_STEPS:-50000}
 export SEQ_LEN=8192
-export BATCH_SIZE=${BATCH_SIZE:-2}
-export GRAD_ACCUM=${GRAD_ACCUM:-4}
+export GLOBAL_BATCH_SIZE=${GLOBAL_BATCH_SIZE:-512}
+export MICRO_BATCH_SIZE=${MICRO_BATCH_SIZE:-2}
+export GRAD_ACCUM=$((GLOBAL_BATCH_SIZE / MICRO_BATCH_SIZE / NUM_HOSTS / 4)) # each host normally has 4 chips
 export GRAD_CLIP=${GRAD_CLIP:-1.0}
 export LR=${LR:-0.0003}
 export MIN_LR_RATIO=${MIN_LR_RATIO:-0.1}
@@ -35,8 +39,9 @@ export ASYNC_CHECKPOINTING=false
 export BASE_OUTPUT_DIRECTORY="gs://${BUCKET_NAME}/model_ckpts/maxtext"
 export MAX_TO_KEEP=${MAX_TO_KEEP:-1}
 export DATA_FILES="${DATA_FILES:-/home/zephyr/gcs-bucket/datasets/dclm/llama3_64_array_record/*.array_record}"
+export LOAD_PARAMETERS_PATH="${LOAD_PARAMETERS_PATH:-gs://${BUCKET_NAME}/model_ckpts/maxtext/llama3.1_8b}"
 export SHUFFLE="${SHUFFLE:-True}"
-export RUN_NAME="${MODEL_NAME}_L200_S50_seqlen_${SEQ_LEN}_bs_${BATCH_SIZE}_grad_accum_${GRAD_ACCUM}_lr_${LR}_min_lr_ratio_${MIN_LR_RATIO}_warmup_ratio_${WARMUP_RATIO}"
+export RUN_NAME="${MODEL_NAME}_finetune_seqlen_${SEQ_LEN}_bs_${BATCH_SIZE}_grad_accum_${GRAD_ACCUM}_lr_${LR}_min_lr_ratio_${MIN_LR_RATIO}_warmup_ratio_${WARMUP_RATIO}"
 if [ ! -z "${TAG:-}" ]; then
     export RUN_NAME="${RUN_NAME}_${TAG}"
 fi
@@ -50,7 +55,7 @@ python -u multihost_runner.py \
     conda activate maxtext
     python3.10 -u -m MaxText.train MaxText/configs/base.yml \
         run_name=${RUN_NAME} \
-        load_parameters_path=gs://${BUCKET_NAME}/model_ckpts/maxtext/llama3.1-2b-depth-minitron/checkpoints/0/items \
+        load_parameters_path=${LOAD_PARAMETERS_PATH} \
         base_output_directory=${BASE_OUTPUT_DIRECTORY} \
         dataset_type=grain \
         grain_train_files=${DATA_FILES} \

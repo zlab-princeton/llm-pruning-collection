@@ -135,14 +135,15 @@ class OrbaxLM(LM):
         
     def _create_fast_forward(self):
         @partial(pjit,
-                 in_shardings=(self.state_mesh_shardings.params, None, None, None),
+                 in_shardings=(self.state_mesh_shardings.params, None, None, None, None),
                  out_shardings=None)
-        def fast_forward(params, input_ids, positions, segment_ids):
+        def fast_forward(params, input_ids, positions, segment_ids, decoder_target_mask):
             return self.model.apply(
                 params,
                 input_ids,
                 positions,
                 segment_ids,
+                decoder_target_mask=decoder_target_mask,
                 enable_dropout=False,
                 rngs={"aqt": jax.random.PRNGKey(0)},
             )
@@ -234,26 +235,36 @@ class OrbaxLM(LM):
         results = []
 
         max_len = max(len(ctx) + len(cont) for _, ctx, cont in requests)
-
+        pad_id = self.tokenizer.pad_token_id or self.tokenizer.eos_token_id
         def pad(seq):
-            return [0] * (max_len - len(seq)) + seq
+            return seq + [pad_id] * (max_len - len(seq))
 
         with self.mesh, nn_partitioning.axis_rules(self.config.logical_axis_rules):
             for (_, context_enc, continuation_enc) in tqdm(requests, disable=disable_tqdm):
 
                 seq = context_enc + continuation_enc
+                seq_len = len(seq)
                 seq = pad(seq)
                 input_ids = jnp.asarray([seq], dtype=jnp.int32)
 
-                seq_len = input_ids.shape[1]
-                positions = jnp.tile(jnp.arange(seq_len, dtype=jnp.int32), (1, 1))
-                segment_ids = jnp.ones((1, seq_len), dtype=jnp.int32)
+                L = input_ids.shape[1]
+                positions = jnp.tile(jnp.arange(L, dtype=jnp.int32), (1, 1))
+                segment_ids = jnp.ones((1, L), dtype=jnp.int32)
+                
+                decoder_target_mask = (input_ids != pad_id)
 
-                logits = self._compiled_forward(self.state.params, input_ids, positions, segment_ids)
+                logits = self._compiled_forward(
+                    self.state.params, 
+                    input_ids, 
+                    positions, 
+                    segment_ids, 
+                    decoder_target_mask,
+                )
+                logits = jnp.where(decoder_target_mask[..., None], logits, -1e30)
                 logits = jax.nn.log_softmax(logits, axis=-1)
 
                 cont_len = len(continuation_enc)
-                cont_start = max_len - cont_len
+                cont_start = seq_len - cont_len
 
                 idxs = jnp.arange(cont_start - 1, cont_start - 1 + cont_len)
                 tok_ids = jnp.asarray(continuation_enc)
@@ -295,6 +306,14 @@ class OrbaxLM(LM):
     def generate_until(self, requests, disable_tqdm: bool = False):
         raise NotImplementedError
         
+        # res = []
+
+        # for request in tqdm(requests, disable=disable_tqdm):
+        #     res.append("lol")
+        #     assert request.arguments[0].strip() != ""
+
+        # return res
+
     def loglikelihood_rolling(self, requests, disable_tqdm: bool = False):
         raise NotImplementedError
     

@@ -27,6 +27,7 @@ model_name=$(basename ${base_model})
 log_dir=${PROJ_DIR}/../../checkpoints/llm-pruner
 
 export PYTHONPATH=$(pwd):${PYTHONPATH:-''}
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 run_exp() {
     dim=${1:-block_wise}
     type=${2:-taylor}
@@ -53,11 +54,11 @@ run_exp() {
         --test_after_train 
 }
 
-run_exp "block_wise" "taylor" "param_first" 0.25
-run_exp "channel_wise" "taylor" "param_first" 0.25
-run_exp "block_wise" "l2" "param_first" 0.25
-run_exp "block_wise" "random" "param_first" 0.25
-run_exp "channel_wise" "l2" "param_first" 0.25
-run_exp "channel_wise" "random" "param_first" 0.25
+# run_exp "block_wise" "taylor" "param_first" 0.25
+# run_exp "channel_wise" "taylor" "param_first" 0.25
+# run_exp "block_wise" "l2" "param_first" 0.25
+# run_exp "block_wise" "random" "param_first" 0.25
+# run_exp "channel_wise" "l2" "param_first" 0.25
+# run_exp "channel_wise" "random" "param_first" 0.25
 run_exp "block_wise" "taylor" "param_second" 0.25
 run_exp "block_wise" "taylor" "vectorize" 0.25

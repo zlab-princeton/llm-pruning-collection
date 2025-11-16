@@ -37,20 +37,25 @@ for bin_dir in "${bin_dirs[@]}"; do
     python eval_ppl.py \
         --model_path="$bin_dir/pytorch_model.bin" 
 
-#     if [[ $model_name == *llama-7b* ]]; then
-#         base_model=/n/fs/vision-mix/yx1168/model_ckpts/llama-7b
-#     elif [[ $model_name == *Llama-2-7b-hf* ]]; then
-#         base_model=meta-llama/Llama-2-7b-hf
-#     elif [[ $model_name == *Llama-3.1-8B* ]]; then
-#         base_model=meta-llama/Llama-3.1-8B
-#     fi
+    if [[ -f ${log_dir}/${model_name}.json ]]; then
+        echo "[INFO] ${model_name} already evaluated, skipping..."
+        continue
+    fi
 
-#     python lm-evaluation-harness/main.py \
-#         --model hf-causal-experimental \
-#         --model_args checkpoint=$bin_dir/pytorch_model.bin,config_pretrained=$base_model \
-#         --tasks openbookqa,arc_easy,winogrande,hellaswag,arc_challenge,piqa,boolq \
-#         --device cuda:0 \
-#         --output_path ${log_dir}/${model_name}.json \
-#         --no_cache
+    if [[ $model_name == *llama-7b* ]]; then
+        base_model=/n/fs/vision-mix/yx1168/model_ckpts/llama-7b
+    elif [[ $model_name == *Llama-2-7b-hf* ]]; then
+        base_model=meta-llama/Llama-2-7b-hf
+    elif [[ $model_name == *Llama-3.1-8B* ]]; then
+        base_model=meta-llama/Llama-3.1-8B
+    fi
+
+    python lm-evaluation-harness/main.py \
+        --model hf-causal-experimental \
+        --model_args checkpoint=$bin_dir/pytorch_model.bin,config_pretrained=$base_model \
+        --tasks openbookqa,arc_easy,winogrande,hellaswag,arc_challenge,piqa,boolq \
+        --device cuda:0 \
+        --output_path ${log_dir}/${model_name}.json \
+        --no_cache
 
 done

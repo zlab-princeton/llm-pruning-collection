@@ -259,16 +259,16 @@ class TaylorImportance(tp.importance.Importance):
                     salience[sub_layer] = sub_layer.weight * sub_layer.weight.grad
                     
                     if self.taylor in ['param_second']:
-                        salience[sub_layer] = sub_layer.weight * sub_layer.weight.acc_grad * sub_layer.weight
+                        salience[sub_layer] = sub_layer.weight * sub_layer.weight.acc_grad.to(sub_layer.weight.device) * sub_layer.weight
                     elif self.taylor in ['param_mix']: 
-                        salience[sub_layer] = -salience + 0.5 * sub_layer.weight * sub_layer.weight.acc_grad * sub_layer.weight   
+                        salience[sub_layer] = -salience + 0.5 * sub_layer.weight * sub_layer.weight.acc_grad.to(sub_layer.weight.device) * sub_layer.weight   
             else:
                 salience = layer.weight * layer.weight.grad
 
                 if self.taylor in ['param_second']:
-                    salience = layer.weight * layer.weight.acc_grad * layer.weight
+                    salience = layer.weight * layer.weight.acc_grad.to(layer.weight.device) * layer.weight
                 elif self.taylor in ['param_mix']: 
-                    salience = salience - 0.5 * layer.weight * layer.weight.acc_grad * layer.weight
+                    salience = salience - 0.5 * layer.weight * layer.weight.acc_grad.to(layer.weight.device) * layer.weight
                     
             # Linear out_channels
             if prune_fn in [tp.prune_linear_out_channels, hf_linear_pruner.prune_out_channels]:
@@ -322,6 +322,7 @@ class TaylorImportance(tp.importance.Importance):
                         local_norm += salience[sub_layer].sum(0).abs() 
                     elif 'param' in self.taylor == 'param':
                         local_norm += salience[sub_layer].abs().sum(0)
+                        del salience[sub_layer]
                     else:
                         raise NotImplementedError
                 group_imp.append(local_norm)

@@ -114,6 +114,7 @@ def main(args):
         logger.log("Pruning Attention Layer = {}".format(list(range(args.block_attention_layer_start, args.block_attention_layer_end))))
         logger.log("Pruning MLP Layer = {}".format(list(range(args.block_mlp_layer_start, args.block_mlp_layer_end))))
 
+        # import pdb; pdb.set_trace()
         pruner = tp.pruner.MetaPruner(
             model,
             forward_prompts,
@@ -128,6 +129,7 @@ def main(args):
                 example_prompts = get_examples('bookcorpus', tokenizer, args.num_examples, seq_len = 64).to(args.device)
                 logger.log("Start Backwarding in iterative steps = {}...".format(i))
                 if args.taylor in ['param_mix', 'param_second']:
+                    import pdb; pdb.set_trace()
                     for j in range(args.num_examples):
                         batch_input = example_prompts[j].unsqueeze(0)
                         loss = model(batch_input, labels=batch_input).loss
@@ -140,8 +142,10 @@ def main(args):
                                 module_param.acc_grad += module_param.grad
                             else:
                                 module_param.acc_grad = copy.deepcopy(module_param.grad)
+                            module_param.acc_grad = module_param.acc_grad.detach().cpu()
                         model.zero_grad()
                         del loss.grad
+                        torch.cuda.empty_cache()
                     
                 loss = model(example_prompts, labels=example_prompts).loss
                 logger.log("Loss = {}".format(loss))

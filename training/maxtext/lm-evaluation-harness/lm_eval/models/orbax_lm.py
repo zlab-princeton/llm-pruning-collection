@@ -156,13 +156,13 @@ class OrbaxLM(LM):
         segment_ids = jnp.ones((batch_size, seq_len), dtype=jnp.int32)
         positions = jnp.tile(jnp.arange(seq_len, dtype=jnp.int32), (batch_size, 1))
 
-        with self.mesh, nn_partitioning.axis_rules(self.config.logical_axis_rules):
-            jax_logits = self._compiled_forward(
-                self.state.params,
-                input_ids_jax,
-                positions,
-                segment_ids,
-            )
+        # with self.mesh, nn_partitioning.axis_rules(self.config.logical_axis_rules):
+        jax_logits = self._compiled_forward(
+            self.state.params,
+            input_ids_jax,
+            positions,
+            segment_ids,
+        )
 
         class Output:
             def __init__(self, logits):
@@ -233,38 +233,38 @@ class OrbaxLM(LM):
     ) -> list[tuple[float, bool]]:
         results = []
 
-        for (_text, context_enc, continuation_enc) in tqdm(requests, disable=disable_tqdm):
-            input_ids = context_enc + continuation_enc
-            input_ids = jnp.asarray([input_ids], dtype=jnp.int32)
+        max_len = max(len(ctx) + len(cont) for _, ctx, cont in requests)
 
-            batch_size, seq_len = input_ids.shape
-            segment_ids = jnp.ones((batch_size, seq_len), dtype=jnp.int32)
-            positions = jnp.tile(jnp.arange(seq_len, dtype=jnp.int32), (batch_size, 1))
+        def pad(seq):
+            return [0] * (max_len - len(seq)) + seq
 
-            logits = self._compiled_forward(
-                self.state.params,
-                input_ids,
-                positions,
-                segment_ids,
-            )
+        with self.mesh, nn_partitioning.axis_rules(self.config.logical_axis_rules):
+            for (_, context_enc, continuation_enc) in tqdm(requests, disable=disable_tqdm):
 
-            # logits: [1, seq_len, vocab_size]
-            # compute log-probs over continuation tokens
-            logits = jax.nn.log_softmax(logits, axis=-1)
-            cont_len = len(continuation_enc)
-            cont_start = input_ids.shape[1] - cont_len
+                seq = context_enc + continuation_enc
+                seq = pad(seq)
+                input_ids = jnp.asarray([seq], dtype=jnp.int32)
 
-            log_probs = []
-            match = True
-            for i, tok in enumerate(continuation_enc):
-                logp = logits[0, cont_start + i - 1, tok]  # use previous token's logits
-                log_probs.append(logp)
-                pred = int(jnp.argmax(logits[0, cont_start + i - 1]))
-                if pred != tok:
-                    match = False
+                seq_len = input_ids.shape[1]
+                positions = jnp.tile(jnp.arange(seq_len, dtype=jnp.int32), (1, 1))
+                segment_ids = jnp.ones((1, seq_len), dtype=jnp.int32)
 
-            loglikelihood = float(jnp.sum(jnp.stack(log_probs)))
-            results.append((loglikelihood, match))
+                logits = self._compiled_forward(self.state.params, input_ids, positions, segment_ids)
+                logits = jax.nn.log_softmax(logits, axis=-1)
+
+                cont_len = len(continuation_enc)
+                cont_start = max_len - cont_len
+
+                idxs = jnp.arange(cont_start - 1, cont_start - 1 + cont_len)
+                tok_ids = jnp.asarray(continuation_enc)
+
+                log_probs = logits[0, idxs, tok_ids]
+                ll = float(jnp.sum(log_probs))
+
+                preds = jnp.argmax(logits[0, idxs], axis=-1)
+                match = bool(jnp.all(preds == tok_ids))
+
+                results.append((ll, match))
 
         return results
     
@@ -295,14 +295,6 @@ class OrbaxLM(LM):
     def generate_until(self, requests, disable_tqdm: bool = False):
         raise NotImplementedError
         
-        # res = []
-
-        # for request in tqdm(requests, disable=disable_tqdm):
-        #     res.append("lol")
-        #     assert request.arguments[0].strip() != ""
-
-        # return res
-
     def loglikelihood_rolling(self, requests, disable_tqdm: bool = False):
         raise NotImplementedError
     

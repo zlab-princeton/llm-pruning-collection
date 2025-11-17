@@ -64,7 +64,7 @@ Llama-2-7b-hf:
 | 2:4          | 0.5 | Paper | 67.7 | 53.0 | 40.9	| 62.4 |	61.78 | 31.2 | 24.2 |
 | 2:4          | 0.5 | Ours  | 68.0 | 53.4 | 41.2 | 62.6 | 62.6 | 30.9 | 23.8 |
 
-**SparseGPR**
+**SparseGPT**
 
 Llama-2-7b-hf:
 | Sparsity | Ratio | Source | BoolQ | RTE | Hellaswag | Winogrande | ARC-E | ARC-C | OBQA |
@@ -112,4 +112,4 @@ Llama-2-7b-hf:
 | Paper | Block   | Vector    | 22.3 | 61.4 | 71.7 | 57.3 | 54.2 | 55.8 | 34.0 | 38.4 |
 | Ours  | Block   | Vector    | 20.4 | 62.2 | 74.1 | 64.4 | 62.6 | 58.8 | 35.7 | 40.8 | 
 
-Note: The results are obtained by running the pruning scripts in this repository. The results since only 10 samples are randomly selected from the bookcorpus dataset are used for importance estimation, even though we fixed the random seed.
+Note: The results are obtained by running the exact pruning and evaluation scripts from the LLM-Pruner repo. Still, some results differ the reported results in the paper. My conjecture is that only 10 samples are randomly selected from the bookcorpus dataset for importance estimation, and this caused some randomness, even though we fixed the random seed.

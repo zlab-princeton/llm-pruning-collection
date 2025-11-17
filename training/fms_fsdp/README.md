@@ -39,3 +39,11 @@ bash fms-fsdp/scripts/hf2fms.sh
 bash fms-fsdp/scripts/finetuning.sh
 ```
 
+## Gradient Accumulation
+Note that the native fms_fsdp does not support gradient accumulation, and we implemented this feature due to limited computing resources. Please see [fms_fsdp/utils/train_utils.py](fms-fsdp/utils/train_utils.py) for more details.
+
+To verify the correctness of our implementation, we did a toy experiment: we trained a small model, llama3.1-1b, with seq_len=64 with different micro batch size and grad accum steps, while keeping the global batch size=128. The results are as follows:
+![](figs/grad_accum.png)
+
+Due to the small sequence length, the loss curve is somewhat noisy, so we also plotted the Exponential Moving Average (EMA) and the bin average (bin size=100) of the loss. From these curves we can see that the value of gradient accumulation steps has minimal impact on the training loss.
+

@@ -19,7 +19,7 @@ bash scripts/prune_llama3.1-8b.sh
 
 **Results**
 
-Winogrande
+**Winogrande**
 
 Paper:
 ![](figs/minitron-winogrande.png)
@@ -27,7 +27,7 @@ Paper:
 Ours:
 ![](figs/minitron-winogrande-ours.png)
 
-Wikitext:
+**Wikitext**
 
 Paper:
 ![](figs/minitron-wikitext.png)

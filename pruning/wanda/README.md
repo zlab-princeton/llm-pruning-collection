@@ -17,6 +17,9 @@ bash scripts/prune_llama-7b.sh
 
 ## Results
 
+**OWL**
+Coming soon!
+
 **Wanda**
 
 Llama-2-7b-hf:

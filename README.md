@@ -1,8 +1,8 @@
 # Small LLMs: Pruning vs Training from Scratch
 
-[Yufeng Xu<sup>1</sup>](https://github.com/Zephyr271828), [Taiming Lu<sup>1</sup>](https://taiminglu.com/), [Jiachen Zhu<sup>2</sup>](https://jiachenzhu.github.io/), [Mingjie Sun<sup>3</sup>](https://eric-mingjie.github.io/), [Kunjun Li<sup>1</sup>](https://kunjun-li.github.io/), and [Zhuang Liu<sup>1</sup>](https://liuzhuang13.github.io/)
+[Yufeng Xu<sup>1</sup>](https://github.com/Zephyr271828), [Taiming Lu<sup>1</sup>](https://taiminglu.com/), [Kunjun Li<sup>1</sup>](https://kunjun-li.github.io/),[Jiachen Zhu<sup>2</sup>](https://jiachenzhu.github.io/), [Mingjie Sun<sup>3</sup>](https://eric-mingjie.github.io/) and [Zhuang Liu<sup>1</sup>](https://liuzhuang13.github.io/)
 
-1 Princeton. 2 NYU. 3 CMU.  
+1 Princeton. 2 NYU. 3 CMU. [[arXiv](https://arxiv.org/abs/2606.14150)]
 
 ---
 
@@ -252,3 +252,14 @@ Llama-2-7b-hf:
 | Ours  | Block   | Vector    | 20.4 | 62.2 | 74.1 | 64.4 | 62.6 | 58.8 | 35.7 | 40.8 | 
 
 Note: The results are obtained by running the exact pruning and evaluation scripts from the LLM-Pruner repo. Still, some results differ the reported results in the paper. My conjecture is that only 10 samples are randomly selected from the bookcorpus dataset for importance estimation, and this caused some randomness, even though we fixed the random seed.
+
+## Citation
+If you find this repository helpful, please consider citing:
+```bibtex
+@article{xu2026llmpruning,
+  title={Small LLMs: Pruning vs. Training from Scratch},
+  author={Xu, Yufeng and Lu, Taiming and Li, Kunjun, and Zhu, Jiachen and Sun, Mingjie and Liu, Zhuang},
+  journal={arXiv preprint arXiv:2606.14150},
+  year={2026}
+}
+```

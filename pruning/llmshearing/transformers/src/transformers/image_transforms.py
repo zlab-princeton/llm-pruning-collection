@@ -131,7 +131,7 @@ def _rescale_for_pil_conversion(image):
     """
     Detects whether or not the image needs to be rescaled before being converted to a PIL image.
 
-    The assumption is that if the image is of type `np.float` and all values are between 0 and 1, it needs to be
+    The assumption is that if the image is of type `float` and all values are between 0 and 1, it needs to be
     rescaled.
     """
     if image.dtype == np.uint8:
